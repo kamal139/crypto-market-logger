@@ -2,12 +2,25 @@ name: tests
 on: [push, pull_request]
 jobs:
   pytest:
-    runs-on: macos-latest
+    runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
+
       - uses: actions/setup-python@v5
         with:
-          python-version: '3.13'
-      - run: python -m pip install --upgrade pip
-      - run: pip install -r requirements.txt
-      - run: pytest -v
+          python-version: '3.11'
+
+      - name: Show env
+        run: |
+          python -V
+          pip -V
+
+      - name: Install deps
+        run: |
+          python -m pip install --upgrade pip
+          pip install -r requirements.txt
+          pip freeze | grep -E '^(ccxt|pandas|pytest)'
+
+      - name: Run tests (verbose)
+        run: |
+          pytest -vv --maxfail=1

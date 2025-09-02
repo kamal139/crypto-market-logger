@@ -18,3 +18,5 @@ __pycache__/
 *.csv
 !crypto_prices.csv
 EOF
+charts/
+crypto_prices.csv

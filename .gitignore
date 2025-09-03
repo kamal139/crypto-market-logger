@@ -20,3 +20,5 @@ __pycache__/
 EOF
 charts/
 crypto_prices.csv
+charts/
+outputs/

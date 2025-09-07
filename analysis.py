@@ -233,3 +233,71 @@ def main():
 
 if __name__ == "__main__":
     main()
+
+# ---------------- Metrics (Day 5) ----------------
+import math
+import numpy as np
+import pandas as pd
+
+def calculate_drawdown(equity: pd.Series) -> dict:
+    """
+    Returns dict with:
+      - max_drawdown: minimum of equity / running_peak - 1 (<= 0)
+      - dd_series: drawdown series (same length as equity)
+    """
+    if len(equity) == 0:
+        return {"max_drawdown": 0.0, "dd_series": pd.Series([], dtype=float)}
+    equity = pd.Series(equity).astype(float).reset_index(drop=True)
+    peak = equity.cummax()
+    dd = equity / peak - 1.0
+    return {"max_drawdown": float(dd.min()), "dd_series": dd}
+
+def calculate_sharpe(returns: pd.Series, periods_per_year: float = 252.0, risk_free: float = 0.0) -> float:
+    """
+    Simple Sharpe = (mean(returns) - rf) / std(returns) * sqrt(periods_per_year)
+    If std == 0 (constant returns), returns NaN to avoid divide-by-zero.
+    """
+    r = pd.Series(returns).astype(float).dropna()
+    if len(r) == 0:
+        return float("nan")
+    excess = r - risk_free / periods_per_year
+    mu = excess.mean()
+    sigma = excess.std(ddof=1)
+    if sigma == 0 or math.isclose(sigma, 0.0):
+        return float("nan")
+    return float(mu / sigma * math.sqrt(periods_per_year))
+# -------------------------------------------------
+
+# --- Hotfix: robust Sharpe against zero/tiny std and constant series ---
+import numpy as np  # safe to import again
+
+def calculate_sharpe(
+    returns: pd.Series,
+    periods_per_year: float = 252.0,
+    risk_free: float = 0.0
+) -> float:
+    """
+    Sharpe = (mean(excess) / std) * sqrt(periods_per_year)
+    - Return NaN if series is empty, constant, non-finite, or std ~ 0.
+    """
+    r = pd.Series(returns, dtype="float64").dropna()
+    if len(r) == 0:
+        return float("nan")
+    # If all returns are the same, volatility is effectively zero
+    if r.nunique(dropna=True) <= 1:
+        return float("nan")
+
+    # Remove any non-finite values defensively
+    r = r[np.isfinite(r.values)]
+    if len(r) == 0:
+        return float("nan")
+
+    excess = r - (risk_free / periods_per_year)
+    mu = float(excess.mean())
+    sigma = float(excess.std(ddof=1))
+
+    EPS = 1e-9  # treat tiny std as zero to avoid astronomical Sharpe
+    if not math.isfinite(sigma) or abs(sigma) < EPS:
+        return float("nan")
+
+    return float(mu / sigma * math.sqrt(periods_per_year))
